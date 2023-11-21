@@ -1,15 +1,13 @@
 using PowerModels
 using Ipopt
-using Suppressor
 
 
 # importing the json file and parsing it to a network data dictionary
 # this step also checks for obvious errors in the network (branches, buses etc that are not connected to anything)
-hours = 1:8760
+hours = 1
 
-#region = "nordic"
-region = "DK1"
-make_basic = "no"
+region = "nordic"
+#region = "DK1"
 PF = "AC"
 type = "native"
 make_basic = "no"
@@ -56,6 +54,8 @@ for hour in hours
                 ac_native_result = compute_ac_pf(data)
                 PowerModels.update_data!(data, ac_native_result["solution"])
                 branch_flows_ac = PowerModels.calc_branch_flow_ac(data)
+                PowerModels.update_data!(data, branch_flows_ac)
+                PowerModels.make_mixed_units!(data)
                 if ac_native_result["termination_status"] != true
                     println("AC powerflow failed to converge at hour $hour")
                 end
@@ -68,31 +68,91 @@ for hour in hours
                 ac_pf_result = solve_pf(data, ACPPowerModel, Ipopt.Optimizer)
                 PowerModels.update_data!(data, ac_pf_result["solution"])
                 branch_flows_ac = PowerModels.calc_branch_flow_ac(data)
+                PowerModels.update_data!(data, branch_flows_ac)
+                PowerModels.make_mixed_units!(data)
             catch
                 println("AC powerflow failed to be solved at hour $hour")
             end
         end
-        # calculate ac branch flows from the solution
+        # extract the bus data that we are interested in
+        vm = Dict(bus["index"] => bus["vm"] for (i,bus) in data["bus"])
+        va = Dict(bus["index"] => bus["va"] for (i,bus) in data["bus"])
+        pd = Dict(load["index"] => load["pd"] for (i,load) in data["load"])
+        pg = Dict(gen["index"] => gen["pg"] for (i,gen) in data["gen"])
+        qg = Dict(gen["index"] => gen["qg"] for (i,gen) in data["gen"])
+        #println(data["load"])
+        bus_results = Dict{String,Any}()
+        for (i,bus) in data["bus"]
+            vm = bus["vm"]
+            va = bus["va"]
+            pd2 = 0
+            pg2 = 0
+            qg2 = 0
+            try pd2 = pd[parse.(Int,i)]
+            catch 
+                pd2 = 0
+            end
+            try pg2 = pg[parse.(Int,i)]
+            catch 
+                pg2 = 0
+            end
+            try qg2 = qg[parse.(Int,i)]
+            catch 
+                qg2 = 0
+            end
+
+            bus_results[i] = Dict(
+                "vm" => vm,
+                "va" => va,
+                "pd" => pd2,
+                "pg" => pg2,
+                "qg" => qg2
+            )
+        end
+
+        # calculate loading of lines
+        loading = Dict(branch["index"] => branch["loading"] for (i,branch) in data["branch"])
+        S_rating = Dict(branch["index"] => branch["S_rate"] for (i,branch) in data["branch"])
+        S_from = Dict(branch["index"] => branch["Sf"] for (i,branch) in data["branch"])
+        S_to = Dict(branch["index"] => branch["St"] for (i,branch) in data["branch"])
+        P_to = Dict(branch["index"] => branch["pt"] for (i,branch) in data["branch"])
+        P_from = Dict(branch["index"] => branch["pf"] for (i,branch) in data["branch"])
+        vad = Dict(branch["index"] => branch["vad"] for (i,branch) in data["branch"])
         
+        branch_results = Dict{String,Any}()
+        for (i,branch) in data["branch"]
+            loading = branch["loading"]
+            S_rating = branch["S_rate"]
+            S_from = branch["Sf"]
+            S_to = branch["St"]
+            P_to = branch["pt"]
+            P_from = branch["pf"]
+            vad = branch["vad"]
+            
+            branch_results[i] = Dict(
+                "loading" => loading,
+                "S_rating" => S_rating,
+                "S_from" => S_from,
+                "S_to" => S_to,
+                "p_to" => P_to,
+                "p_from" => P_from,
+                "va_diff" => vad
+            )
+        end
+
+        PowerModels.update_data!(data, Dict{String,Any}("branch_results" => branch_results))
+        PowerModels.update_data!(data, Dict{String,Any}("bus_results" => bus_results))
     end
 
-    #push!(Solutions, [hour data])   
+    if region == "nordic"
+        export_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/nordic_h$hour.json", data)
+    elseif region == "DK1"
+        export_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/DK1_h$hour.json", data)
+    end
 
+    if hour % 200 == 0
+        println("Hour $hour")
+    end
+    #push!(Solutions, [data_export])   
 end
-
-
-# Plotting etc
-
-#plot_network(network_data)
-
-# Table-like output of the solution
-#PowerModels.print_summary(ac_pf_result["solution"])
-#PowerModels.print_summary(ac_native_result["solution"])
-#PowerModels.print_summary(dc_native_result["solution"])
-#PowerModels.print_summary(branch_flows_ac)
-#PowerModels.print_summary(branch_flows_dc)
-
-#result["solution"]["bus"]["1"]
-
-#PowerModels.make_mixed_units!(data)
-#PowerModels.print_summary(data) # quick table-like summary
+println("Successfully exported results")
