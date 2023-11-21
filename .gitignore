@@ -10,3 +10,7 @@ docs/.documenter
 .project
 .tags
 generated_jsons/*
+result_json/*
+result_csv/*
+result_plots/*
+*.json

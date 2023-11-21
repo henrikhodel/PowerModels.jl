@@ -3,7 +3,7 @@ using CSV, DataFrames, XLSX
 using JSONTables, JSON, DataStructures, Plots
 import DataStructures: OrderedDict
 
-hour = 1
+hour = 154
 
 # import buses and lines as dataframe in julia
 df_bus = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Grid data/Post_joint_fix/buses_post_joint_no_dc.csv", DataFrame)
@@ -151,7 +151,7 @@ buses_DK1_manually = [
 
 
 buses_DK1_load = df_load_factors_DK[df_load_factors_DK.load_factor_DK1 .> 0, :name]
-buses_DK1_gen = df_gen_factors_DK[df_gen_factors_DK.Wind_DK1 .> 0, :name]
+buses_DK1_gen = df_gen_factors_DKs[df_gen_factors_DKs.Wind_DK1 .> 0, :name]
 
 buses_DK1_auto = union(buses_DK1_load, buses_DK1_gen)
 buses_DK1_auto = parse.(Int,string.(buses_DK1_auto))
@@ -164,7 +164,6 @@ outside_buses = [
     5749,
     5751,
     5858,
-    7053,
     5685,
     5686,
     5588,
@@ -227,6 +226,8 @@ df_pd_FI.pd = zeros(size(df_pd_FI,1))
 
 
 buses = df_pd[:,1]
+CSV.write("C:/Users/hodel/Documents/GitHub/PowerModels.jl/all_buses.csv", buses)
+
 #buses = string.(buses)
 #buses = Vector{Any}(buses)
 
@@ -246,7 +247,7 @@ NO_load_loss_factor = 1 # 5% loss in the NO bidding zone
 DK_load_loss_factor = 1 # 5% loss in the DK bidding zone
 FI_load_loss_factor = 1 # 5% loss in the FI bidding zone
 
-
+bla 
 for bus in buses
     if bus in df_load_factors_SE[:,1]
         df_pd_SE[df_pd_SE.bus.==bus,"pd"] = (df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE1"] * df_loads[hour,"SE1"]
@@ -570,13 +571,15 @@ df_load[!,:load_bus_str] = string.(df_load[:,:load_bus])
 df_bus[!,:bus_i_str] = string.(df_bus[:,:bus_i])
 df_links[!,:name_str] = string.(df_links[:,:name])
 
+grid_loss_factor = 0.95
+
 # Using JSON.jl to make nested objects
 load = []
 df_load_nordic = df_load[in.(df_load.load_bus, Ref(buses_nordic)), :] # only nordic buses
 for g in groupby(df_load_nordic, :load_bus)
     load_data = OrderedDict(
         "load_bus" => g.load_bus[end],
-        "pd" => g.pd[end],
+        "pd" => g.pd[end] * grid_loss_factor,
         "qd" => 0,
         "index" => g.load_bus[end],
         "status" => 1
@@ -674,11 +677,11 @@ end
 
 # we have to looop this methinks
 
-open("nordic_500_h0001.json", "w") do f
+open("generated_jsons/nordic/nordic_500_h$hour.json", "w") do f
 end
 
 
-open("nordic_500_h0001.json", "a") do f
+open("generated_jsons/nordic/nordic_500_h$hour.json", "a") do f
 write(f,"""{
     "baseMVA": 1000,
     "per_unit": false,
@@ -702,10 +705,10 @@ write(f,    """}
 end
 
 
-test = read("nordic_500_h0001.json",String)
+test = read("generated_jsons/nordic/nordic_500_h$hour.json",String)
 a = replace(test, "]],[[" => ",", "],[" => ":",  "]" => "", "[" => "")
 
-open("nordic_500_h0001.json", "w") do f
+open("generated_jsons/nordic/nordic_500_h$hour.json", "w") do f
     write(f, a)
 end
 
@@ -719,7 +722,7 @@ df_load = df_load[in.(df_load.load_bus, Ref(buses_DK1_all)), :] # only DK1
 for g in groupby(df_load, :load_bus)
     load_data = OrderedDict(
         "load_bus" => g.load_bus[end],
-        "pd" => g.pd[end],
+        "pd" => g.pd[end] * grid_loss_factor,
         "qd" => 0,
         "index" => g.load_bus[end],
         "status" => 1
@@ -790,10 +793,10 @@ end
 
 
 
-open("DK1_only_h0001.json", "w") do f
+open("generated_jsons//DK1/DK1_only_h$hour.json", "w") do f
 end
 
-open("DK1_only_h0001.json", "a") do f
+open("generated_jsons//DK1/DK1_only_h$hour.json", "a") do f
 write(f,"""{
     "baseMVA": 1000,
     "per_unit": false,
@@ -817,10 +820,10 @@ write(f,    """}
 end
 
 
-test = read("DK1_only_h0001.json",String)
+test = read("generated_jsons//DK1/DK1_only_h$hour.json",String)
 a = replace(test, "]],[[" => ",", "],[" => ":",  "]" => "", "[" => "")
 
-open("DK1_only_h0001.json", "w") do f
+open("generated_jsons//DK1/DK1_only_h$hour.json", "w") do f
     write(f, a)
 end
 
