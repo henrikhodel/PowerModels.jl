@@ -166,7 +166,6 @@ outside_buses = [
     5749,
     5751,
     5858,
-    7053,
     5685,
     5686,
     5588,
@@ -240,10 +239,21 @@ buses_load_FI = df_load_factors_FI[:,1]
 buses_load_NO = df_load_factors_NO[:,1]
 buses_load_SE = df_load_factors_SE[:,1]
 
-SE_load_loss_factor = 1 # 5% loss in the SE bidding zone
-NO_load_loss_factor = 1 # 5% loss in the NO bidding zone
-DK_load_loss_factor = 1 # 5% loss in the DK bidding zone
-FI_load_loss_factor = 1 # 5% loss in the FI bidding zone
+SE1_load_loss_factor = 0 # 2.2 # % loss 
+SE2_load_loss_factor = 0 # 11.4 # 16.1 # % loss
+SE3_load_loss_factor = 0 # 1 # 4.2 # % loss
+SE4_load_loss_factor = 0 # 0.9 # 3 # % loss
+
+NO1_load_loss_factor = 0 # 0 # 2.1 # % loss
+NO2_load_loss_factor = 0 # 4.4 # 2.7 # % loss
+NO3_load_loss_factor = 0 # 2 # 2.2 # % loss
+NO4_load_loss_factor = 0 # 2.5 # 2.8 # % loss
+NO5_load_loss_factor = 0 # 4.1 # 4.8 # % loss
+
+DK1_load_loss_factor = 0 # 0 # 1 # % loss
+DK2_load_loss_factor = 0 # 0.2 # 0.6 # % loss
+
+FI_load_loss_factor = 0 # 0.6 # 2.6 # % loss
 
 # # # # Generation # # # #
 
@@ -287,8 +297,8 @@ df_links[!,:name] = parse.(Int,string.(df_links[!,:name]));
 df_bus_nordic = df_bus[in.(df_bus.bus_i, Ref(buses_nordic)), :] # only nordic buses
 df_branch_nordic = df_branch[in.(df_branch.f_bus, Ref(buses_nordic)), :] # only nordic buses
 
-
-df_bus_nordic[df_bus_nordic.bus_i.==7003,:bus_type] .= 3 # set the reference bus for the nordics
+# 7003 = hårsprånget, 6591 = forsmark
+df_bus_nordic[df_bus_nordic.bus_i.==6591,:bus_type] .= 3 # set the reference bus for the nordics
 
 df_bus_DK1 = df_bus[in.(df_bus.bus_i, Ref(buses_DK1_all)), :] # only DK1
 df_branch_DK1 = df_branch[in.(df_branch.f_bus, Ref(buses_DK1_all)), :] # only DK1
@@ -302,30 +312,29 @@ gens = []
 net_exps = []
 loads = []
 for hour in hours
-    println(hour)
     for bus in buses
         if bus in df_load_factors_SE[:,1]
-            local df_pd_SE[df_pd_SE.bus.==bus,"pd"] = (df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE1"] * df_loads[hour,"SE1"]
-                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE2"] * df_loads[hour,"SE2"]
-                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE3"] * df_loads[hour,"SE3"]
-                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE4"] * df_loads[hour,"SE4"]
-            ) * SE_load_loss_factor
+            local df_pd_SE[df_pd_SE.bus.==bus,"pd"] = (df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE1"] * df_loads[hour,"SE1"] * (1-SE1_load_loss_factor/100)
+                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE2"] * df_loads[hour,"SE2"] * (1-SE2_load_loss_factor/100)
+                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE3"] * df_loads[hour,"SE3"] * (1-SE3_load_loss_factor/100)
+                + df_load_factors_SE[df_load_factors_SE.name.==bus,"load_factor_SE4"] * df_loads[hour,"SE4"] * (1-SE4_load_loss_factor/100)
+            )
 
         elseif bus in df_load_factors_NO[:,1]
-            local df_pd_NO[df_pd_NO.bus.==bus,"pd"] = (df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO1"] * df_loads[hour,"NO1"]
-                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO2"] * df_loads[hour,"NO2"]
-                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO3"] * df_loads[hour,"NO3"]
-                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO4"] * df_loads[hour,"NO4"]
-                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO5"] * df_loads[hour,"NO5"]
-            ) * NO_load_loss_factor
+            local df_pd_NO[df_pd_NO.bus.==bus,"pd"] = (df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO1"] * df_loads[hour,"NO1"] * (1-NO1_load_loss_factor/100)
+                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO2"] * df_loads[hour,"NO2"] * (1-NO2_load_loss_factor/100)
+                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO3"] * df_loads[hour,"NO3"] * (1-NO3_load_loss_factor/100)
+                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO4"] * df_loads[hour,"NO4"] * (1-NO4_load_loss_factor/100)
+                + df_load_factors_NO[df_load_factors_NO.name.==bus,"load_factor_NO5"] * df_loads[hour,"NO5"] * (1-NO5_load_loss_factor/100)
+            )
 
         elseif bus in df_load_factors_DK[:,1]
-            local df_pd_DK[df_pd_DK.bus.==bus,"pd"] = (df_load_factors_DK[df_load_factors_DK.name.==bus,"load_factor_DK1"] * df_loads[hour,"DK1"]
-                + df_load_factors_DK[df_load_factors_DK.name.==bus,"load_factor_DK2"] * df_loads[hour,"DK2"]
-            ) * DK_load_loss_factor
+            local df_pd_DK[df_pd_DK.bus.==bus,"pd"] = (df_load_factors_DK[df_load_factors_DK.name.==bus,"load_factor_DK1"] * df_loads[hour,"DK1"] * (1-DK1_load_loss_factor/100)
+                + df_load_factors_DK[df_load_factors_DK.name.==bus,"load_factor_DK2"] * df_loads[hour,"DK2"] * (1-DK2_load_loss_factor/100)
+            )
     
         elseif bus in df_load_factors_FI[:,1]
-            local df_pd_FI[df_pd_FI.bus.==bus,"pd"] = (df_load_factors_FI[df_load_factors_FI.name.==bus,"load_factor_FI"] * df_loads[hour,"FI"] ) * FI_load_loss_factor
+            local df_pd_FI[df_pd_FI.bus.==bus,"pd"] = df_load_factors_FI[df_load_factors_FI.name.==bus,"load_factor_FI"] * df_loads[hour,"FI"] * (1-FI_load_loss_factor/100)
         else
         end
     end
@@ -518,7 +527,7 @@ for hour in hours
     df_net_exp = vcat(df_net_exp, DataFrame(load_bus = 6358, pd = float(df_crossborder[hour,"NO2 > DE"] - df_crossborder[hour,"NO2 < DE"]))) # NO2 side
 
     # NO2 - GB
-    df_net_exp = vcat(df_net_exp, DataFrame(load_bus = 6683, pd = float(df_crossborder[hour,"NO2 > GB"] - df_crossborder[hour,"NO2 < GB"]))) # NO2 side
+    df_net_exp = vcat(df_net_exp, DataFrame(load_bus = 6695, pd = float(df_crossborder[hour,"NO2 > GB"] - df_crossborder[hour,"NO2 < GB"]))) # NO2 side
 
     # NO2 - NL
     df_net_exp = vcat(df_net_exp, DataFrame(load_bus = 6363, pd = float(df_crossborder[hour,"NO2 > NL"] - df_crossborder[hour,"NO2 < NL"]))) # NO2 side
@@ -546,7 +555,6 @@ for hour in hours
 
 
     #println("net export:", sum(df_net_exp[!,"pd"]))
-
     local df_load2 = vcat(df_load, df_net_exp)
     local df_load2 = combine(groupby(df_load2, :load_bus), :pd => sum, renamecols=false)
     #println("load after:", sum(df_load[!,"pd"]))
@@ -558,7 +566,6 @@ for hour in hours
     #print("missing generation: ", diff)
     # cover it by imports (temporary measure)
 
-
     # push to here in the for loop
 
     push!(imbalance, diff)
@@ -566,16 +573,17 @@ for hour in hours
     push!(loads, round(sum(df_loads[hour,2:13])-sum(df_load[!,"pd"]); digits = 2))
 
     df_gen[!,:gen_bus_str] = string.(df_gen[:,:gen_bus])
-    df_load[!,:load_bus_str] = string.(df_load[:,:load_bus])
+    df_load2[!,:load_bus_str] = string.(df_load2[:,:load_bus])
     df_gen[!,:gen_bus] = parse.(Int,string.(df_gen[!,:gen_bus]));
     
+    grid_loss_factor = 1
     # Using JSON.jl to make nested objects
     local load = []
-    local df_load_nordic = df_load[in.(df_load.load_bus, Ref(buses_nordic)), :] # only nordic buses
+    local df_load_nordic = df_load2[in.(df_load2.load_bus, Ref(buses_nordic)), :] # only nordic buses
     for g in groupby(df_load_nordic, :load_bus)
         load_data = OrderedDict(
             "load_bus" => g.load_bus[end],
-            "pd" => g.pd[end],
+            "pd" => g.pd[end] * grid_loss_factor,
             "qd" => 0,
             "index" => g.load_bus[end],
             "status" => 1
@@ -708,11 +716,11 @@ for hour in hours
 
     # Using JSON.jl to make nested objects
     local load_DK1 = []
-    local df_load = df_load[in.(df_load.load_bus, Ref(buses_DK1_all)), :] # only DK1
+    local df_load = df_load2[in.(df_load2.load_bus, Ref(buses_DK1_all)), :] # only DK1
     for g in groupby(df_load, :load_bus)
         load_data = OrderedDict(
             "load_bus" => g.load_bus[end],
-            "pd" => g.pd[end],
+            "pd" => g.pd[end] * grid_loss_factor,
             "qd" => 0,
             "index" => g.load_bus[end],
             "status" => 1
@@ -813,6 +821,10 @@ for hour in hours
 
     open("generated_jsons//DK1/DK1_only_h$hour.json", "w") do f
         write(f, a)
+    end
+
+    if hour % 200 == 0
+        println("Hour $hour")
     end
 end
 
