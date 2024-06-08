@@ -24,7 +24,8 @@ df_gen_factors_FIs = DataFrame(XLSX.readtable("C:/Users/hodel/OneDrive - Chalmer
 df_gen_factors_NOs = DataFrame(XLSX.readtable("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Grid data/Post_joint_fix/load and gen allocation/NO_gen.xlsx","to_julia"))
 
 # import loads and generation timeseries as dataframe in julia
-global df_loads = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/Processed data/Load_nordic_adjusted.csv", DataFrame)
+#global df_loads = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/Processed data/Load_nordic_adjusted.csv", DataFrame)
+global df_loads = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/Processed data/loads_adjusted_and_losses_subtracted.csv", DataFrame)
 
 df_load_SE1 = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/SE_1_load.csv", DataFrame)
 df_load_SE2 = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/SE_2_load.csv", DataFrame)
@@ -64,6 +65,7 @@ df_gen_FI = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/inpu
 
 df_gen_factors_other_DK = DataFrame(XLSX.readtable("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Grid data/Post_joint_fix/load and gen allocation/Other_gen.xlsx","to_julia_DK"))
 df_gen_factors_other_FI = DataFrame(XLSX.readtable("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Grid data/Post_joint_fix/load and gen allocation/Other_gen.xlsx","to_julia_FI"))
+df_gen_factors_other_NO = DataFrame(XLSX.readtable("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Grid data/Post_joint_fix/load and gen allocation/Other_gen.xlsx","to_julia_NO"))
 display("successfully loaded data")
 
 df_load_SE1 = coalesce.(df_load_SE1, 0)
@@ -100,6 +102,7 @@ df_gen_FI = coalesce.(df_gen_FI, 0)
 
 df_gen_factors_other_DK = coalesce.(df_gen_factors_other_DK, 0)
 df_gen_factors_other_FI = coalesce.(df_gen_factors_other_FI, 0)
+df_gen_factors_other_NO = coalesce.(df_gen_factors_other_NO, 0)
 
 # fix some incorrect generation
 
@@ -198,7 +201,7 @@ df_gen_factors_FIs[!,:name] = parse.(Int,string.(df_gen_factors_FIs[!,:name]));
 
 df_gen_factors_other_DK[!,:name] = parse.(Int,string.(df_gen_factors_other_DK[!,:name]));
 df_gen_factors_other_FI[!,:name] = parse.(Int,string.(df_gen_factors_other_FI[!,:name]));
-
+df_gen_factors_other_NO[!,:name] = parse.(Int,string.(df_gen_factors_other_NO[!,:name]));
 
 # allocate the loads (need to remove the losses as they will be calculated in the model)
 # mulitply the load factor value with the actual load value for rows with the same bus in the load factor and load dataframes
@@ -229,10 +232,10 @@ buses = df_pd[:,1]
 #buses = string.(buses)
 #buses = Vector{Any}(buses)
 
-buses_gen_SE = union(df_gen_factors_SEs[:,1],[6348, 6312, 6591])
-buses_gen_NO = df_gen_factors_NOs[:,1]
-buses_gen_DK = union(df_gen_factors_DKs[:,1],df_gen_factors_other_DK[:,1])
-buses_gen_FI = union(df_gen_factors_FIs[:,1],df_gen_factors_other_FI[:,1], [6617, 6570])
+buses_gen_SE = union(df_gen_factors_SEs[:,1])
+buses_gen_NO = union(df_gen_factors_NOs[:,1], df_gen_factors_other_NO[:,1])
+buses_gen_DK = union(df_gen_factors_DKs[:,1], df_gen_factors_other_DK[:,1])
+buses_gen_FI = union(df_gen_factors_FIs[:,1], df_gen_factors_other_FI[:,1], [6617, 6570])
 
 buses_load_DK = df_load_factors_DK[:,1]
 buses_load_FI = df_load_factors_FI[:,1]
@@ -276,6 +279,7 @@ df_pg_FI = DataFrame(bus = df_gen_factors_FI[:,1])
 
 df_pg_other_DK = DataFrame(bus = df_gen_factors_other_DK[:,1])
 df_pg_other_FI = DataFrame(bus = df_gen_factors_other_FI[:,1])
+df_pg_other_NO = DataFrame(bus = df_gen_factors_other_NO[:,1])
 
 # add column called "qd" to the dataframes and fill it with zeroes
 df_pg_SE.pg = zeros(size(df_pg_SE,1))
@@ -285,6 +289,7 @@ df_pg_FI.pg = zeros(size(df_pg_FI,1))
 
 df_pg_other_DK.pg_other_DK = zeros(size(df_pg_other_DK,1))
 df_pg_other_FI.pg_other_FI = zeros(size(df_pg_other_FI,1))
+df_pg_other_NO.pg_other_NO = zeros(size(df_pg_other_NO,1))
 
 df_branch[!,:name_str] = string.(df_branch[:,:name])
 df_bus[!,:bus_i_str] = string.(df_bus[:,:bus_i])
@@ -400,8 +405,8 @@ for hour in hours
                 + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO1"] * (df_gen_NO1[hour,"Biomass"] + df_gen_NO1[hour,"Waste"] + df_gen_NO1[hour,"Fossil Gas"])
                 + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO2"] * (df_gen_NO2[hour,"Waste"] + df_gen_NO2[hour,"Fossil Gas"])
                 + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO3"] * (df_gen_NO3[hour,"Waste"] + df_gen_NO3[hour,"Fossil Gas"] + df_gen_NO3[hour,"Other renewable"] + df_gen_NO3[hour,"Other"])
-                + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO4"] * (df_gen_NO4[hour,"Other renewable"] + df_gen_NO4[hour,"Fossil Gas"])
-                + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO5"] * (df_gen_NO5[hour,"Waste"] + df_gen_NO5[hour,"Fossil Gas"])
+                + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO4"] * (df_gen_NO4[hour,"Other renewable"])
+                + df_gen_factors_NO[df_gen_factors_NO.name.==bus,"load_factor_NO5"] * (df_gen_NO5[hour,"Waste"])
             )
 
         elseif bus in df_gen_factors_DK[:,1]
@@ -455,17 +460,23 @@ for hour in hours
                 + df_gen_factors_other_FI[df_gen_factors_other_FI.name.==bus,"Biomass"] * df_gen_FI[hour,"Biomass"]
                 + df_gen_factors_other_FI[df_gen_factors_other_FI.name.==bus,"Other"] * df_gen_FI[hour,"Other"]
             )
+        elseif bus in df_gen_factors_other_NO[:,1]
+            local df_pg_other_NO[df_pg_other_NO.bus.==bus,"pg_other_NO"] =
+            (
+                df_gen_factors_other_NO[df_gen_factors_other_NO.name.==bus,"Fossil Gas NO4"] * df_gen_NO4[hour,"Fossil Gas"]
+                + df_gen_factors_other_NO[df_gen_factors_other_NO.name.==bus,"Fossil Gas NO5"] * df_gen_NO5[hour,"Fossil Gas"]
+            )
         else
         end
     end
 
     # merge load factor dataframes
     local df_gen = DataFrame(gen_bus = Int64[], pg = Float64[])
-    local df_gen = outerjoin(df_pg_SE, df_pg_DK, df_pg_FI, df_pg_NO, df_pg_other_DK, df_pg_other_FI, on = :bus, makeunique = true)
+    local df_gen = outerjoin(df_pg_SE, df_pg_DK, df_pg_FI, df_pg_NO, df_pg_other_DK, df_pg_other_FI, df_pg_other_NO, on = :bus, makeunique = true)
     # fill missing fields in df_load_factors with 0
     local df_gen = coalesce.(df_gen, 0)
     # sum the pd columns
-    local df_gen[!,"pgsum"] = df_gen[!,"pg"] + df_gen[!,"pg_1"] + df_gen[!,"pg_2"] + df_gen[!,"pg_3"] + df_gen[!,"pg_other_DK"] + df_gen[!,"pg_other_FI"]
+    local df_gen[!,"pgsum"] = df_gen[!,"pg"] + df_gen[!,"pg_1"] + df_gen[!,"pg_2"] + df_gen[!,"pg_3"] + df_gen[!,"pg_other_DK"] + df_gen[!,"pg_other_FI"] + df_gen[!,"pg_other_NO"]
     # keep only the bus and pdsum columns
     local df_gen = select(df_gen,["bus", "pgsum"])
     # rename the pdsum column to pd
@@ -828,6 +839,6 @@ for hour in hours
     end
 end
 
-plot(imbalance, label = "imbalance")
-plot(gens, label = "missing gen")
-plot(loads, label = "missing load")
+Plots.plot(imbalance, label = "imbalance")
+Plots.plot(gens, label = "missing gen")
+Plots.plot(loads, label = "missing load")

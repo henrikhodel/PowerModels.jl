@@ -19,7 +19,7 @@ df_internal_flows = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Pape
 df_loads = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/Processed data/Load_nordic_adjusted.csv", DataFrame)
 
 # specify the hours to be processed
-hours = 154
+hours = 1:200
 # specify the region to be processed
 region = "nordic"
 # specify the voltage bounds
@@ -45,7 +45,7 @@ df_pg_qg_ratio = DataFrame(Bus = Int64[], max_pg = Float64[], max_qg = Float64[]
 for hour in hours
     # Importing the solved nordic system jsons as a dictionary
     if region == "nordic"
-        data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/pre impedance fix/nordic_h$hour.json")
+        data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/nordic_h$hour.json")
     elseif region == "DK1"
         data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/DK1_h$hour.json")
     end
@@ -176,7 +176,7 @@ for hour in hours
         BZ_loss[idx, :Net_Exp] += net_exp[1]
     end
 
-    #
+    # Calculate the loss for each BZ
     for row in eachrow(BZ_loss)
         true_load = df_loads[hour, row.Region]
         idx = findfirst(BZ_loss.Region .== row.Region)
@@ -273,7 +273,7 @@ fig_plt = PlotlyJS.plot(
         font_size = 16,
         font_color = "black",
         xaxis_range = (0,100),
-        yaxis_range = (0,1),
+        yaxis_range = (0,2),
         margin=attr(l=20,r=20,t=20,b=20)
     )
 )
@@ -299,8 +299,6 @@ fig_plt = PlotlyJS.plot(
 )
 plt_str = "C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/vad_sorted.svg"
 PlotlyJS.savefig(fig_plt, plt_str, width=round(Int, 300*1.5), height=300*1, scale=1)
-
-
 
 # generate timeseries plots for each border
 for border in unique(df_flows[:,"Border"])
@@ -359,4 +357,32 @@ for region in regions
     Plots.savefig("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/losses_duration.png")
 end
 
-test = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/nordic/pre impedance fix/nordic_h154.json")
+test = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/nordic/nordic_h154.json")
+
+df_residuals = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Paper plots/residual_for_plots.csv", DataFrame)
+
+# Create traces
+trace1 = PlotlyJS.scatter(x=df_residuals[:,"hour"], y=df_residuals[:,"NO1 > NO2"],
+                    mode="lines",
+                    name="NO1 > NO2")
+trace2 = PlotlyJS.scatter(x=df_residuals[:,"hour"], y=df_residuals[:,"NO2 > NO5"],
+                    mode="lines",
+                    name="NO2 > NO5",
+                    marker_color="rgba(255, 0, 0, 0.5)"  # Set transparency to 50%
+                    )
+layout = Layout( 
+    font_family = "Times New Roman",
+    font_size = 16,
+    font_color = "black",
+    yaxis_range = (-400, 1000),
+    yaxis_title = "Residual [MW]",
+    xaxis_title = "Hour of year [h]",
+    xaxis_range = (0,8760),
+    margin=attr(l=20,r=20,t=20,b=20),
+    legend=attr(x=0.35, y=0.95)  # Adjust x and y to position the legend inside the plot
+)
+
+fig_plt = PlotlyJS.plot([trace1, trace2], layout)
+
+plt_str = "C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/NO_res.svg"
+PlotlyJS.savefig(fig_plt, plt_str, width=round(Int, 300*3), height=300*1, scale=1)

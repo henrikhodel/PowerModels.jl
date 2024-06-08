@@ -4,7 +4,7 @@ using Ipopt
 
 # importing the json file and parsing it to a network data dictionary
 # this step also checks for obvious errors in the network (branches, buses etc that are not connected to anything)
-hours = 1
+hours = 1:8760
 
 region = "nordic"
 #region = "DK1"
