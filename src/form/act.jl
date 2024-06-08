@@ -22,7 +22,7 @@ function constraint_model_voltage(pm::AbstractACTModel, n::Int)
 
     for (i,j) in ids(pm, n, :buspairs)
         JuMP.@constraint(pm.model, wr[(i,j)]^2 + wi[(i,j)]^2 == w[i]*w[j])
-        JuMP.@NLconstraint(pm.model, wi[(i,j)] == tan(t[i] - t[j])*wr[(i,j)])
+        JuMP.@constraint(pm.model, wi[(i,j)] == tan(t[i] - t[j])*wr[(i,j)])
     end
 end
 
@@ -84,6 +84,5 @@ function constraint_voltage_angle_difference(pm::AbstractACTModel, n::Int, f_idx
     va_fr = var(pm, n, :va)[f_bus]
     va_to = var(pm, n, :va)[t_bus]
 
-    JuMP.@constraint(pm.model, va_fr - va_to <= angmax)
-    JuMP.@constraint(pm.model, va_fr - va_to >= angmin)
+    JuMP.@constraint(pm.model, angmin <= va_fr - va_to <= angmax)
 end
