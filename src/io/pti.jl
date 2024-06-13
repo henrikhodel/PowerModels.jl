@@ -1083,9 +1083,9 @@ function export_pti(io::IO, data::Dict{String,Any})
     # Bus
     for (_, bus) in sort(collect(data["bus"]), by=(x) -> x.second["index"])
         # Skip star-buses created by three-winding transformers from importing raw source files
-        if bus["source_id"][1] == "transformer"
-            continue
-        end
+        #if !haskey(bus, "source_id") || bus["source_id"][1] == "transformer"
+        #    continue
+        #end
 
         # Get Dict in a PSSE way
         psse_comp = _pm2psse_bus(bus)
@@ -1542,7 +1542,7 @@ function _pm2psse_2w_tran(pm_br::Dict{String, Any}, owner::Int, sbase::Real, sou
     if haskey(pm_br, "source_id")
         ckt = source == "pti" ? "\'$(pm_br["source_id"][5])\'" : "\'$(pm_br["source_id"][end])\'"
     else
-        ckt = _default_transformer("CKT")
+        ckt = _default_transformer["CKT"]
     end
     sub_data["CKT"] = ckt
     sub_data["CW"] = _default_transformer["CW"]
