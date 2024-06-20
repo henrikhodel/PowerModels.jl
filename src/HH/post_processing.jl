@@ -1,5 +1,5 @@
 # import packages/
-using CSV, DataFrames, XLSX
+using CSV, DataFrames, XLSX, Revise
 using JSONTables, JSON, DataStructures, Plots
 using PlotlyJS
 using PowerModels
@@ -19,9 +19,7 @@ df_internal_flows = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Pape
 df_loads = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/input data/Scripts/entsoe_data/Processed data/Load_nordic_adjusted.csv", DataFrame)
 
 # specify the hours to be processed
-hours = 1:200
-# specify the region to be processed
-region = "nordic"
+hours = 1:8760
 # specify the voltage bounds
 vm_min = 0.9875 # p.u.
 vm_max = 1.05 # p.u.
@@ -44,11 +42,8 @@ df_pg_qg_ratio = DataFrame(Bus = Int64[], max_pg = Float64[], max_qg = Float64[]
 # Looping over the hours
 for hour in hours
     # Importing the solved nordic system jsons as a dictionary
-    if region == "nordic"
-        data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/nordic_h$hour.json")
-    elseif region == "DK1"
-        data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/$region/DK1_h$hour.json")
-    end
+    data = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/nordic_h$hour.json")
+
     # Extracting the branch and bus results from the dictionary and putting them in a DataFrame
     df_branches = insertcols!(reduce(vcat, DataFrame.(values(data["branch_results"])), cols=:union), :Branch => parse.(Int,collect(keys(data["branch_results"]))))
     df_buses = insertcols!(reduce(vcat, DataFrame.(values(data["bus_results"])), cols=:union), :bus => parse.(Int,collect(keys(data["bus_results"]))))
@@ -246,7 +241,6 @@ CSV.write("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_csv/max_qg_pg_r
 
 
 
-
 df_test_plot = df_test[:, :Result]
 filtered_data = [x for x in df_test_plot if isfinite(x)]
 x = 1:length(filtered_data)
@@ -309,7 +303,7 @@ for border in unique(df_flows[:,"Border"])
     xlabel!("Hour")
     ylabel!("Power [MW]")
     border = replace(border, ">" => "to")  # otherwise Windows will be angry >:(
-    Plots.savefig("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/$region/$border duration.png")
+    Plots.savefig("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/$border duration.png")
 end
 
 for border in unique(df_flows[:,"Border"])
@@ -320,7 +314,7 @@ for border in unique(df_flows[:,"Border"])
     xlabel!("Hour")
     ylabel!("Power [MW]")
     border = replace(border, ">" => "to")  # otherwise Windows will be angry >:(
-    Plots.savefig("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/$region/$border.png")
+    Plots.savefig("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/$border.png")
 end
 
 
@@ -359,6 +353,8 @@ end
 
 test = parse_file("C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_json/nordic/nordic_h154.json")
 
+
+### Plot for the paper
 df_residuals = CSV.read("C:/Users/hodel/OneDrive - Chalmers/PhD/Papers/Paper 2/Paper plots/residual_for_plots.csv", DataFrame)
 
 # Create traces
@@ -374,15 +370,15 @@ layout = Layout(
     font_family = "Times New Roman",
     font_size = 16,
     font_color = "black",
-    yaxis_range = (-400, 1000),
+    yaxis_range = (-600, 750),
     yaxis_title = "Residual [MW]",
     xaxis_title = "Hour of year [h]",
     xaxis_range = (0,8760),
     margin=attr(l=20,r=20,t=20,b=20),
-    legend=attr(x=0.35, y=0.95)  # Adjust x and y to position the legend inside the plot
+    legend=attr(x=0.55, y=0.95)  # Adjust x and y to position the legend inside the plot
 )
 
 fig_plt = PlotlyJS.plot([trace1, trace2], layout)
 
 plt_str = "C:/Users/hodel/Documents/GitHub/PowerModels.jl/result_plots/NO_res.svg"
-PlotlyJS.savefig(fig_plt, plt_str, width=round(Int, 300*3), height=300*1, scale=1)
+PlotlyJS.savefig(fig_plt, plt_str, width=round(Int, 300*3), height=round(Int, 300*1.5), scale=1)
